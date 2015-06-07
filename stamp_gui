@@ -152,6 +152,7 @@ class MyForm(wx.Frame):
 	self.tc2.Bind(wx.EVT_SET_FOCUS, self.OnTextSetFocus)
         dt1 = FileDropTarget(self.tc2)
         self.tc2.SetDropTarget(dt1)
+	self.tc2.Bind(wx.EVT_TEXT, self.OnPressEnter)
 
         button1 = wx.Button(panel, label="Browse...")
         sizer.Add(button1, pos=(2, 4), flag=wx.TOP|wx.RIGHT, border=5)
@@ -206,6 +207,17 @@ class MyForm(wx.Frame):
         sys.stdout=redir
  
     #----------------------------------------------------------------------
+    def setupWatcher(self):
+        watcher = FileSystemWatcher()
+        watcher.Path = application_path
+        
+        watcher.Changed += self.onChanged
+        watcher.Created += self.onChanged
+        watcher.Deleted += self.onChanged
+        watcher.Renamed += self.onRenamed
+        
+        watcher.EnableRaisingEvents = True
+
     def BrowseBtn(self, event):
 	dlg = wx.DirDialog(self, "Choose a directory:", style=wx.DD_DEFAULT_STYLE)
         if dlg.ShowModal() == wx.ID_OK:
@@ -264,7 +276,7 @@ def_stamp = int(watermarks.index('stamp.png'))
 
 grav_full = ['North', 'South', 'East', 'West', 'NorthWest', 'SouthWest', 'NorthEast', 'SouthEast', 'Center']
 global gravity; gravity = "SouthEast"
- 
+
 #----------------------------------------------------------------------
 # Run the program
 if __name__ == "__main__":
