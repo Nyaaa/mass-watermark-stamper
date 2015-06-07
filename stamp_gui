@@ -17,20 +17,22 @@ class RedirectText(object):
     def write(self, string):
 	wx.CallAfter(self.out.WriteText, string)
 
+class FileDropTarget(wx.FileDropTarget):
+   def __init__(self, obj):
+      wx.FileDropTarget.__init__(self)
+      self.obj = obj
+
+   def OnDropFiles(self, x, y, filenames):
+      self.obj.SetInsertionPointEnd()
+      for file in filenames:
+	global path
+	rootdir = file
+	if os.path.exists(rootdir): 
+	    self.obj.WriteText(file)
+
 ##########################
 ########## MAIN ##########
 ##########################
-
-## muting stdout
-#class DummyFile(object):
-#    def write(self, x): pass
-
-#@contextlib.contextmanager
-#def nostdout():
-#    save_stdout = sys.stdout
-#    sys.stdout = DummyFile()
-#    yield
-#    sys.stdout = save_stdout
 
 class RunThread(Thread):
     def __init__(self):
@@ -89,11 +91,11 @@ class RunThread(Thread):
 	     if not os.path.exists('./stamp'): os.makedirs('./stamp')
 	     print "Processing file %d out of %d" % (number, total)
 	#get width
-	     wid = subprocess.Popen(['identify', '-format', '%w', '%s' % file.encode('windows-1251')], shell=True, stdout=subprocess.PIPE)
+	     wid = subprocess.Popen(['identify', '-format', '%w', '%s' % file.encode('windows-1251')], shell=False, stdout=subprocess.PIPE)
 	     wid = str(wid.communicate())
 	     wid = int(re.sub("\D", "", wid)) #\D removes any non-digit character
 	#get height
-	     hei = subprocess.Popen(['identify', '-format', '%h', '%s' % file.encode('windows-1251')], shell=True, stdout=subprocess.PIPE)
+	     hei = subprocess.Popen(['identify', '-format', '%h', '%s' % file.encode('windows-1251')], shell=False, stdout=subprocess.PIPE)
 	     hei = str(hei.communicate())
 	     hei = int(re.sub("\D", "", hei)) #\D removes any non-digit character
 
@@ -130,7 +132,7 @@ class MyForm(wx.Frame):
     #---------------------------------------------------------------------- 
  
         sizer = wx.GridBagSizer(5, 5)
-	text1 = wx.StaticText(panel, label="Mass Watermark Stamper")
+	text1 = wx.StaticText(panel, label="Mass Image Stamper v1.3")
         sizer.Add(text1, pos=(0, 0), flag=wx.TOP|wx.LEFT|wx.BOTTOM, 
             border=15)
 
@@ -147,6 +149,9 @@ class MyForm(wx.Frame):
         self.tc2 = wx.TextCtrl(panel, style = wx.TE_PROCESS_ENTER)
         sizer.Add(self.tc2, pos=(2, 1), span=(1, 3), flag=wx.TOP|wx.EXPAND, border=5)
 	self.tc2.Bind(wx.EVT_TEXT_ENTER, self.OnPressEnter)
+	self.tc2.Bind(wx.EVT_SET_FOCUS, self.OnTextSetFocus)
+        dt1 = FileDropTarget(self.tc2)
+        self.tc2.SetDropTarget(dt1)
 
         button1 = wx.Button(panel, label="Browse...")
         sizer.Add(button1, pos=(2, 4), flag=wx.TOP|wx.RIGHT, border=5)
@@ -227,6 +232,11 @@ class MyForm(wx.Frame):
 	    print "Ready. Press \"Go!\" to start."
 	else: self.button4.Disable(); print "Error! No such folder."
 
+    def OnTextSetFocus(self,event): 
+        wx.CallAfter(self.SelectAll) 
+    def SelectAll(self): 
+        self.tc2.SetSelection(-1, -1)
+
     def QuitBtn(self, event):
 	self.Close()
 
@@ -246,9 +256,6 @@ stamp_name_default = "stamp.png"
 application_path = os.path.dirname(os.path.realpath(sys.argv[0]))
 stamp = os.path.join(application_path, stamp_name_default)
 
-#root_path = os.listdir(application_path)
-#for file in root_path:
-#  if os.path.splitext(file)[1].lower() in ('.png'):
 os.chdir(application_path)
 for files in os.listdir("."):
     if files.endswith(".png"):
@@ -264,5 +271,3 @@ if __name__ == "__main__":
     app = wx.PySimpleApp()
     frame = MyForm().Show()
     app.MainLoop()
-
-
