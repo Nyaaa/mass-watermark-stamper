@@ -112,6 +112,7 @@ class RunThread(Thread):
 	     if os.path.exists(stamp):
 	     	tempstamp = stamp_small(dim2) # call resizer
 	     	os.system('composite -gravity %s  %s  %s  %s' % (gravity, tempstamp, newfile, newfile))
+	     	os.system('convert -quality 75  %s  %s' % (newfile, newfile))
 	     	os.remove(tempstamp)
 	     number = number + 1
 	print "Done!"
@@ -125,14 +126,14 @@ class MyForm(wx.Frame):
  
     #----------------------------------------------------------------------
     def __init__(self):
-        wx.Frame.__init__(self, None, wx.ID_ANY, "Mass Watermark Stamper", size=(450, 280))
+        wx.Frame.__init__(self, None, wx.ID_ANY, "Mass Watermark Stamper", size=(450, 300))
          # Add a panel so it looks the correct on all platforms
         panel = wx.Panel(self, wx.ID_ANY)
 
     #---------------------------------------------------------------------- 
  
         sizer = wx.GridBagSizer(5, 5)
-	text1 = wx.StaticText(panel, label="Mass Image Stamper v1.3")
+	text1 = wx.StaticText(panel, label="Mass Image Stamper v1.4")
         sizer.Add(text1, pos=(0, 0), flag=wx.TOP|wx.LEFT|wx.BOTTOM, 
             border=15)
 
@@ -280,6 +281,6 @@ global gravity; gravity = "SouthEast"
 #----------------------------------------------------------------------
 # Run the program
 if __name__ == "__main__":
-    app = wx.PySimpleApp()
+    app = wx.App(False)
     frame = MyForm().Show()
     app.MainLoop()
