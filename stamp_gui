@@ -6,9 +6,16 @@ import contextlib
 import re, math
 from threading import Thread
 try:
-	 import wx
+    import wx
 except ImportError:
-	 raise ImportError,"The wxPython module is required to run this program."
+    raise ImportError,"The wxPython module is required to run this program."
+
+class RedirectText(object):
+    def __init__(self,aWxTextCtrl):
+        self.out=aWxTextCtrl
+ 
+    def write(self, string):
+	wx.CallAfter(self.out.WriteText, string)
 
 ##########################
 ########## MAIN ##########
@@ -16,24 +23,24 @@ except ImportError:
 
 ## muting stdout
 #class DummyFile(object):
-#	 def write(self, x): pass
+#    def write(self, x): pass
 
 #@contextlib.contextmanager
 #def nostdout():
-#	 save_stdout = sys.stdout
-#	 sys.stdout = DummyFile()
-#	 yield
-#	 sys.stdout = save_stdout
+#    save_stdout = sys.stdout
+#    sys.stdout = DummyFile()
+#    yield
+#    sys.stdout = save_stdout
 
-class TestThread(Thread):
-	 def __init__(self):
-			"""Init Worker Thread Class."""
-			Thread.__init__(self)
-			self.start()	 # start the thread
+class RunThread(Thread):
+    def __init__(self):
+        """Init Worker Thread Class."""
+        Thread.__init__(self)
+        self.start()    # start the thread
  
-	 def run(self):
-			"""Run Worker Thread."""
-			# This is the code executing in the new thread.
+    def run(self):
+        """Run Worker Thread."""
+        # This is the code executing in the new thread.
 
 	number = 1
 	fileList = []
@@ -41,17 +48,17 @@ class TestThread(Thread):
 
 	# counting images recursively
 	for root, subFolders, files in os.walk(rootdir):
-	 		for file in files:
-				if os.path.splitext(file)[1].lower() in ('.jpg', '.jpeg'):
+    	  for file in files:
+            if os.path.splitext(file)[1].lower() in ('.jpg', '.jpeg'):
 		f = os.path.join(root,file)
 		f = '"%s"' % f
-				fileList.append(f)
+	        fileList.append(f)
 	total = len(fileList)
 
 	# rounding up dimensions
 	def roundup(dim):
-		no = 0
-		while no != 1:
+	   no = 0
+	   while no != 1:
 		x = int(round(dim, -1))
 		if x<dim: dim = dim+5
 		else: dim2 = x; no = 1; return dim2
@@ -72,41 +79,39 @@ class TestThread(Thread):
 ### resizing ###
 ################
 	for root, subdirs, files in os.walk(rootdir): # recursion
-	 		for file in files:
-				if os.path.splitext(file)[1].lower() in ('.jpg', '.jpeg'):
-			#file = file.decode('windows-1251')
-			#root = root.decode('windows-1251')
-				 img = os.path.join(root, file)
-			img = '"%s"' % img
-			os.chdir(root)
-			if not os.path.exists('./stamp'): os.makedirs('./stamp')
-			#wx.CallAfter(Publisher.sendMessage, "update", "Processing file %d out of %d" % (number, total))
-			print "Processing file %d out of %d" % (number, total)
+    	  for file in files:
+            if os.path.splitext(file)[1].lower() in ('.jpg', '.jpeg'):
+	     #file = file.decode('windows-1251')
+	     #root = root.decode('windows-1251')
+             img = os.path.join(root, file)
+	     img = '"%s"' % img
+	     os.chdir(root)
+	     if not os.path.exists('./stamp'): os.makedirs('./stamp')
+	     print "Processing file %d out of %d" % (number, total)
 	#get width
-			wid = subprocess.Popen(['identify', '-format', '%w', '%s' % file.encode('windows-1251')], shell=True, stdout=subprocess.PIPE)
-			wid = str(wid.communicate())
-			wid = int(re.sub("\D", "", wid)) #\D removes any non-digit character
+	     wid = subprocess.Popen(['identify', '-format', '%w', '%s' % file.encode('windows-1251')], shell=True, stdout=subprocess.PIPE)
+	     wid = str(wid.communicate())
+	     wid = int(re.sub("\D", "", wid)) #\D removes any non-digit character
 	#get height
-			hei = subprocess.Popen(['identify', '-format', '%h', '%s' % file.encode('windows-1251')], shell=True, stdout=subprocess.PIPE)
-			hei = str(hei.communicate())
-			hei = int(re.sub("\D", "", hei)) #\D removes any non-digit character
+	     hei = subprocess.Popen(['identify', '-format', '%h', '%s' % file.encode('windows-1251')], shell=True, stdout=subprocess.PIPE)
+	     hei = str(hei.communicate())
+	     hei = int(re.sub("\D", "", hei)) #\D removes any non-digit character
 
-			if wid > hei:
+	     if wid > hei:
 		dim = wid
-			else:
+	     else:
 		dim = hei
-			dim2 = roundup(dim)
-			newfile = "./stamp/%03d.jpg" % number
+	     dim2 = roundup(dim)
+	     newfile = "./stamp/%03d.jpg" % number
 	#square
-				 os.system('convert '"%s"' -background white -gravity center -extent "%sx%s" "%s"' % (img.encode('windows-1251'), dim2, dim2, newfile))# square
-			if dim2>900: os.system('convert %s -resize 900 %s' % (newfile, newfile))#resize files over 900 pixels
+             os.system('convert '"%s"' -background white -gravity center -extent "%sx%s" "%s"' % (img.encode('windows-1251'), dim2, dim2, newfile))# square
+	     if dim2>900: os.system('convert %s -resize 900 %s' % (newfile, newfile))#resize files over 900 pixels
 	#stamping
-			if os.path.exists(stamp):
-				tempstamp = stamp_small(dim2) # call resizer
-				os.system('composite -gravity SouthEast	%s	%s	%s' % (tempstamp, newfile, newfile))
-				os.remove(tempstamp)
-			number = number + 1
-	#wx.CallAfter(Publisher.sendMessage, "update", "Done!")
+	     if os.path.exists(stamp):
+	     	tempstamp = stamp_small(dim2) # call resizer
+	     	os.system('composite -gravity %s  %s  %s  %s' % (gravity, tempstamp, newfile, newfile))
+	     	os.remove(tempstamp)
+	     number = number + 1
 	print "Done!"
 	os.chdir(application_path)
 
@@ -116,118 +121,124 @@ class TestThread(Thread):
 ########################
 class MyForm(wx.Frame):
  
-	 #----------------------------------------------------------------------
-	 def __init__(self):
-			wx.Frame.__init__(self, None, wx.ID_ANY, "Mass Watermark Stamper")
-			# Add a panel so it looks the correct on all platforms
-			panel = wx.Panel(self, wx.ID_ANY)
+    #----------------------------------------------------------------------
+    def __init__(self):
+        wx.Frame.__init__(self, None, wx.ID_ANY, "Mass Watermark Stamper", size=(450, 280))
+         # Add a panel so it looks the correct on all platforms
+        panel = wx.Panel(self, wx.ID_ANY)
 
-	 #---------------------------------------------------------------------- 
+    #---------------------------------------------------------------------- 
  
-			sizer = wx.GridBagSizer(5, 5)
+        sizer = wx.GridBagSizer(5, 5)
 	text1 = wx.StaticText(panel, label="Mass Watermark Stamper")
-			sizer.Add(text1, pos=(0, 0), flag=wx.TOP|wx.LEFT|wx.BOTTOM, 
-				border=15)
+        sizer.Add(text1, pos=(0, 0), flag=wx.TOP|wx.LEFT|wx.BOTTOM, 
+            border=15)
 
-			#icon = wx.StaticBitmap(panel, bitmap=wx.Bitmap('exec.png'))
-			#sizer.Add(icon, pos=(0, 4), flag=wx.TOP|wx.RIGHT|wx.ALIGN_RIGHT, border=5)
+        #icon = wx.StaticBitmap(panel, bitmap=wx.Bitmap('exec.png'))
+        #sizer.Add(icon, pos=(0, 4), flag=wx.TOP|wx.RIGHT|wx.ALIGN_RIGHT, border=5)
 
-			line = wx.StaticLine(panel)
-			sizer.Add(line, pos=(1, 0), span=(1, 5), 
-				flag=wx.EXPAND|wx.BOTTOM, border=10)
+        line = wx.StaticLine(panel)
+        sizer.Add(line, pos=(1, 0), span=(1, 5), 
+            flag=wx.EXPAND|wx.BOTTOM, border=10)
 
-			text2 = wx.StaticText(panel, label="Folder:")
-			sizer.Add(text2, pos=(2, 0), flag=wx.LEFT|wx.TOP, border=10)
+        text2 = wx.StaticText(panel, label="Folder:")
+        sizer.Add(text2, pos=(2, 0), flag=wx.LEFT|wx.TOP, border=10)
 
-			self.tc2 = wx.TextCtrl(panel, style = wx.TE_PROCESS_ENTER)
-			sizer.Add(self.tc2, pos=(2, 1), span=(1, 3), flag=wx.TOP|wx.EXPAND, border=5)
+        self.tc2 = wx.TextCtrl(panel, style = wx.TE_PROCESS_ENTER)
+        sizer.Add(self.tc2, pos=(2, 1), span=(1, 3), flag=wx.TOP|wx.EXPAND, border=5)
 	self.tc2.Bind(wx.EVT_TEXT_ENTER, self.OnPressEnter)
 
-			button1 = wx.Button(panel, label="Browse...")
-			sizer.Add(button1, pos=(2, 4), flag=wx.TOP|wx.RIGHT, border=5)
+        button1 = wx.Button(panel, label="Browse...")
+        sizer.Add(button1, pos=(2, 4), flag=wx.TOP|wx.RIGHT, border=5)
 	button1.Bind(wx.EVT_BUTTON, self.BrowseBtn)
 
 	text3 = wx.StaticText(panel, label="Watermark:")
-			sizer.Add(text3, pos=(3, 0), flag=wx.LEFT|wx.TOP, border=10)
+        sizer.Add(text3, pos=(3, 0), flag=wx.LEFT|wx.TOP, border=10)
 
-	self.combo = wx.ComboBox(panel, choices=watermarks)
+	self.combo = wx.ComboBox(panel, choices=watermarks, value=watermarks[def_stamp])
 	sizer.Add(self.combo, pos=(3, 1), span=(1, 3), flag=wx.TOP|wx.EXPAND, border=5)
 	self.combo.Bind(wx.EVT_COMBOBOX, self.onSelect)
 
-	self.displayLbl = wx.StaticText(panel, label="Select a folder to start.")
-	sizer.Add(self.displayLbl, pos=(4, 0), span=(1, 5), flag=wx.LEFT|wx.TOP, border=10)
+	text4 = wx.StaticText(panel, label="Gravity:")
+        sizer.Add(text4, pos=(4, 0), flag=wx.LEFT|wx.TOP, border=10)
 
-#			sb = wx.StaticBox(panel, label="Optional Attributes")
+	self.combo2 = wx.ComboBox(panel, choices=grav_full, value=grav_full[7])
+	sizer.Add(self.combo2, pos=(4, 1), span=(1, 3), flag=wx.TOP|wx.EXPAND, border=5)
+	self.combo2.Bind(wx.EVT_COMBOBOX, self.onSelect2)
 
-#			boxsizer = wx.StaticBoxSizer(sb, wx.VERTICAL)
-#			boxsizer.Add(wx.CheckBox(panel, label="Public"), 
-#				flag=wx.LEFT|wx.TOP, border=5)
-#			boxsizer.Add(wx.CheckBox(panel, label="Generate Default Constructor"),
-#				flag=wx.LEFT, border=5)
-#			boxsizer.Add(wx.CheckBox(panel, label="Generate Main Method"), 
-#				flag=wx.LEFT|wx.BOTTOM, border=5)
-#			sizer.Add(boxsizer, pos=(5, 0), span=(1, 5), 
-#				flag=wx.EXPAND|wx.TOP|wx.LEFT|wx.RIGHT , border=10)
+	log = wx.TextCtrl(panel, wx.ID_ANY, style = wx.TE_MULTILINE|wx.TE_READONLY)
+        sizer.Add(log, pos=(5, 0), span=(1, 5), flag=wx.ALL|wx.EXPAND, border=5)
 
-#			button3 = wx.Button(panel, label='Help')
-#			sizer.Add(button3, pos=(7, 0), flag=wx.LEFT, border=10)
+#        sb = wx.StaticBox(panel, label="Optional Attributes")
 
-			self.button4 = wx.Button(panel, label="Go!")
-			sizer.Add(self.button4, pos=(6, 3))
+#        boxsizer = wx.StaticBoxSizer(sb, wx.VERTICAL)
+#        boxsizer.Add(wx.CheckBox(panel, label="Public"), 
+#            flag=wx.LEFT|wx.TOP, border=5)
+#        boxsizer.Add(wx.CheckBox(panel, label="Generate Default Constructor"),
+#            flag=wx.LEFT, border=5)
+#        boxsizer.Add(wx.CheckBox(panel, label="Generate Main Method"), 
+#            flag=wx.LEFT|wx.BOTTOM, border=5)
+#        sizer.Add(boxsizer, pos=(5, 0), span=(1, 5), 
+#            flag=wx.EXPAND|wx.TOP|wx.LEFT|wx.RIGHT , border=10)
+
+#        button3 = wx.Button(panel, label='Help')
+#        sizer.Add(button3, pos=(7, 0), flag=wx.LEFT, border=10)
+
+        self.button4 = wx.Button(panel, label="Go!")
+        sizer.Add(self.button4, pos=(6, 3))
 	self.button4.Bind(wx.EVT_BUTTON, self.GoBtn)
 	self.button4.Disable()
 
-			button5 = wx.Button(panel, label="Quit")
-			sizer.Add(button5, pos=(6, 4), flag=wx.BOTTOM|wx.RIGHT, border=5)
+        button5 = wx.Button(panel, label="Quit")
+        sizer.Add(button5, pos=(6, 4), flag=wx.BOTTOM|wx.RIGHT, border=5)
 	button5.Bind(wx.EVT_BUTTON, self.QuitBtn)
 
-			sizer.AddGrowableCol(2)
-			
-			panel.SetSizer(sizer)
- 
-	 #----------------------------------------------------------------------
-	 def BrowseBtn(self, event):
-	dlg = wx.DirDialog(self, "Choose a directory:", style=wx.DD_DEFAULT_STYLE)
-			if dlg.ShowModal() == wx.ID_OK:
-		 self.tc2.Remove(0,99999999)
-		 global rootdir
-		 rootdir = dlg.GetPath()
-		 rootdir = rootdir.decode('windows-1251')
-			dlg.Destroy()
-	if os.path.exists(rootdir): 
-		 self.button4.Enable()
-		 self.tc2.write(rootdir)
-		 self.displayLbl.SetLabel("Ready. Press \"Go!\" to start.")
-	else: self.button4.Disable(); self.displayLbl.SetLabel("Error! No such folder.")
- 
-	 def GoBtn(self, event):
-			# Runs the thread
-			TestThread()
-			self.button4.Disable()
+        sizer.AddGrowableCol(2)
+        
+        panel.SetSizer(sizer)
 
-	 def OnPressEnter(self,event):
+        redir=RedirectText(log)
+        sys.stdout=redir
+ 
+    #----------------------------------------------------------------------
+    def BrowseBtn(self, event):
+	dlg = wx.DirDialog(self, "Choose a directory:", style=wx.DD_DEFAULT_STYLE)
+        if dlg.ShowModal() == wx.ID_OK:
+	    self.tc2.Remove(0,99999999)
+	    global rootdir
+	    rootdir = dlg.GetPath()
+	    rootdir = rootdir.decode('windows-1251')
+        dlg.Destroy()
+	if os.path.exists(rootdir): 
+	    self.button4.Enable()
+	    self.tc2.write(rootdir)
+	    print "Ready. Press \"Go!\" to start."
+	else: self.button4.Disable(); print "Error! No such folder."
+ 
+    def GoBtn(self, event):# Runs the thread
+        RunThread()
+        self.button4.Disable()
+
+    def OnPressEnter(self,event):
 	global rootdir
 	rootdir = self.tc2.GetValue()
 	if os.path.exists(rootdir): 
-		 self.button4.Enable()
-		 self.displayLbl.SetLabel("Ready. Press \"Go!\" to start.")
-	else: self.button4.Disable(); self.displayLbl.SetLabel("Error! No such folder.")
+	    self.button4.Enable()
+	    print "Ready. Press \"Go!\" to start."
+	else: self.button4.Disable(); print "Error! No such folder."
 
-	 def QuitBtn(self, event):
+    def QuitBtn(self, event):
 	self.Close()
 
-	 def onSelect(self, event):
+    def onSelect(self, event):
 	stamp_name = self.combo.GetStringSelection()
 	global stamp
 	stamp = os.path.join(application_path, stamp_name)
-	self.displayLbl.SetLabel(stamp)
+	print stamp
 
-	 #----------------------------------------------------------------------
-	 def updateDisplay(self, msg):
-			# Receives data from thread and updates the display
-			t = msg.data
-			self.displayLbl.SetLabel("%s" % t)
-	if t == "Done!": self.button4.Enable()
+    def onSelect2(self, event):
+	global gravity
+	gravity = self.combo2.GetStringSelection()
 
 watermarks = []
 global stamp
@@ -235,15 +246,23 @@ stamp_name_default = "stamp.png"
 application_path = os.path.dirname(os.path.realpath(sys.argv[0]))
 stamp = os.path.join(application_path, stamp_name_default)
 
-root_path = os.listdir(application_path)
-for file in root_path:
-	if os.path.splitext(file)[1].lower() in ('.png', '.jpg'):
-	 f = os.path.join(root_path,file)
-	 watermarks.append(file)
+#root_path = os.listdir(application_path)
+#for file in root_path:
+#  if os.path.splitext(file)[1].lower() in ('.png'):
+os.chdir(application_path)
+for files in os.listdir("."):
+    if files.endswith(".png"):
+       watermarks.append(files)
+def_stamp = int(watermarks.index('stamp.png'))
+
+grav_full = ['North', 'South', 'East', 'West', 'NorthWest', 'SouthWest', 'NorthEast', 'SouthEast', 'Center']
+global gravity; gravity = "SouthEast"
  
 #----------------------------------------------------------------------
 # Run the program
 if __name__ == "__main__":
-	 app = wx.PySimpleApp()
-	 frame = MyForm().Show()
-	 app.MainLoop()
+    app = wx.PySimpleApp()
+    frame = MyForm().Show()
+    app.MainLoop()
+
+
