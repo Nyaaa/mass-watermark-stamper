@@ -1,42 +1,42 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*- 
-console_encoding = 'windows-1251'
-import os, sys, subprocess
-import contextlib, tempfile
-import re, math
 import argparse
+import contextlib
+import os
+import re
+import subprocess
+import sys
+import tempfile
 
 # parsing arguments ---------------------
 parser = argparse.ArgumentParser()
 parser.add_argument('-g', '--gravity', action='store', dest='gravity', help='tells where to put a stamp', nargs='?', default='se', choices=['n', 's', 'e', 'w', 'nw', 'sw', 'ne', 'se', 'c'])
 parser.add_argument('-f', '--folder', action='store', dest='folder', help='folder to process', nargs=1, required=True)
-parser.add_argument('-s', '--stamp', action='store', dest='stamp', help='path to your stamp', nargs='?', default='0')
+parser.add_argument('-s', '--stamp', action='store', dest='stamp', help='path to your stamp', nargs='?', default=False)
 results = parser.parse_args()
 
-get_grav = results.gravity
 path = results.folder
 stamp = results.stamp
-rootdir = path[0]#.decode('windows-1251')
+rootdir = path[0]
 
 # ---------------------------------------
-#rootdir = sys.argv[1].decode('windows-1251') # positional argument
-#print rootdir
 number = 1
 fileList = []
 temp = tempfile.TemporaryFile()
 stamp_name = "stamp.png"
 
 application_path = os.path.dirname(os.path.realpath(sys.argv[0]))
-if stamp == "0": stamp = os.path.join(application_path, stamp_name)
-print(application_path, stamp)
-if os.path.exists(stamp): print("Using stamp:", stamp)
-else: print("No stamp found")
+if not stamp:
+    stamp = os.path.join(application_path, stamp_name)
+if os.path.exists(stamp):
+    print("Using stamp:", stamp)
+else:
+    print("No stamp found")
 
 # interpret gravity argument------------
-grav_sh = ['n', 's', 'e', 'w', 'nw', 'sw', 'ne', 'se', 'c']
-grav_full = ['North', 'South', 'East', 'West', 'NorthWest', 'SouthWest', 'NorthEast', 'SouthEast', 'Center']
-loc = int(grav_sh.index(get_grav))
-gravity = grav_full[loc]
+grav = dict(n='North', s='South', e='East', w='West', nw='NorthWest', sw='SouthWest', ne='NorthEast', se='SouthEast',
+            c='Center')
+gravity = grav.get(results.gravity)
 
 # muting stdout-------------------------
 class DummyFile(object):
@@ -57,23 +57,23 @@ for root, subFolders, files in os.walk(rootdir):
             fileList.append(file)
 total = len(fileList)
 
-# rounding up dimensions---------------
-def roundup(dim):
-    no = 0
-    while no != 1:
-        x = int(round(dim, -1))
-        if x < dim: dim = dim + 5
-        else: dim2 = x; no = 1; return dim2
+def round_step(number, multiple):
+    return multiple * round(number / multiple)
 
-# resizing stamp-----------------------
-def stamp_small(dim2):
-    if dim2 > 900: dim2 = 900
-    if dim2 >= 700: scale = 40  # size = % of final dimension (dim2)
-    elif dim2 <= 400: scale = 65
-    else: scale = 55
-    stampsize = float(dim2)/float(100)*scale
-    stampsize = int(math.ceil(stampsize))
-    tempstamp = "%s\\tempstamp.png" % sys.path[0]
+
+def stamp_small(dim):
+    """resizing stamp
+    size = % of final dimension (dim)"""
+    scale = 55
+    if dim > 900:
+        scale = 25
+    elif 900 <= dim < 700:
+        scale = 40
+    elif 700 <= dim < 400:
+        scale = 65
+    stampsize = int(dim/100*scale)
+    stampsize = round_step(stampsize, 5)
+    tempstamp = sys.path[0] + "\\tempstamp.png"
     os.system('magick convert %s -resize %d %s' % (stamp, stampsize, tempstamp))
     return tempstamp
 
@@ -104,16 +104,16 @@ for root, subdirs, files in os.walk(rootdir):  # recursion
                 dim = wid
             else:
                 dim = hei
-            dim2 = roundup(dim)
+            dim = round_step(dim, 5)
 
             newfile = ".\stamp\%03d.jpg" % number
         # square
-            os.system(f'magick convert {img} -background white -gravity center -extent {dim2}x{dim2} {newfile}')
+            os.system(f'magick convert {img} -background white -gravity center -extent {dim}x{dim} {newfile}')
         # resize files over 900 pixels
-            if dim2 > 900: os.system(f'magick convert {newfile} -resize 900 {newfile}')
+            if dim > 900: os.system(f'magick convert {newfile} -resize 900 {newfile}')
         # stamping
             if os.path.exists(stamp):
-                tempstamp = stamp_small(dim2)  # call resizer
+                tempstamp = stamp_small(dim)  # call resizer
                 os.system(f'magick composite -gravity {gravity} {tempstamp} {newfile} {newfile}')
                 os.remove(tempstamp)
             number = number + 1
