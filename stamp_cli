@@ -16,7 +16,7 @@ results = parser.parse_args()
 get_grav = results.gravity
 path = results.folder
 stamp = results.stamp
-rootdir = path[0].decode('windows-1251')
+rootdir = path[0]#.decode('windows-1251')
 
 # ---------------------------------------
 #rootdir = sys.argv[1].decode('windows-1251') # positional argument
@@ -28,9 +28,9 @@ stamp_name = "stamp.png"
 
 application_path = os.path.dirname(os.path.realpath(sys.argv[0]))
 if stamp == "0": stamp = os.path.join(application_path, stamp_name)
-print application_path, stamp
-if os.path.exists(stamp): print "Using stamp:", stamp
-else: print "No stamp found"
+print(application_path, stamp)
+if os.path.exists(stamp): print("Using stamp:", stamp)
+else: print("No stamp found")
 
 # interpret gravity argument------------
 grav_sh = ['n', 's', 'e', 'w', 'nw', 'sw', 'ne', 'se', 'c']
@@ -53,70 +53,68 @@ def nostdout():
 for root, subFolders, files in os.walk(rootdir):
     for file in files:
         if os.path.splitext(file)[1].lower() in ('.jpg', '.jpeg'):
-		f = os.path.join(root,file)
-	        fileList.append(file)
+            f = os.path.join(root,file)
+            fileList.append(file)
 total = len(fileList)
 
 # rounding up dimensions---------------
 def roundup(dim):
-	no = 0
-	while no != 1:
-		x = int(round(dim, -1))
-		if x<dim: dim = dim+5
-		else: dim2 = x; no = 1; return dim2
+    no = 0
+    while no != 1:
+        x = int(round(dim, -1))
+        if x < dim: dim = dim + 5
+        else: dim2 = x; no = 1; return dim2
 
 # resizing stamp-----------------------
 def stamp_small(dim2):
-	if dim2>900: dim2 = 900
-	if dim2>=700: scale = 40 # size = % of final dimension (dim2)
-	elif dim2<=400: scale = 65
-	else: scale = 55
-	stampsize = float(dim2)/float(100)*scale
-	stampsize = int(math.ceil(stampsize))
-	tempstamp = "%s\\tempstamp.png" % sys.path[0]
-	os.system('convert %s -resize %d %s' % (stamp, stampsize, tempstamp))
-	return tempstamp
+    if dim2 > 900: dim2 = 900
+    if dim2 >= 700: scale = 40  # size = % of final dimension (dim2)
+    elif dim2 <= 400: scale = 65
+    else: scale = 55
+    stampsize = float(dim2)/float(100)*scale
+    stampsize = int(math.ceil(stampsize))
+    tempstamp = "%s\\tempstamp.png" % sys.path[0]
+    os.system('magick convert %s -resize %d %s' % (stamp, stampsize, tempstamp))
+    return tempstamp
 
 
 ################
 ### resizing ###
 ################
-for root, subdirs, files in os.walk(rootdir): # recursion
+for root, subdirs, files in os.walk(rootdir):  # recursion
     for file in files:
         if os.path.splitext(file)[1].lower() in ('.jpg', '.jpeg'):
-	     #print file
-	     file = file#.decode('windows-1251')
-	     #print root
-	     root = root#.decode('windows-1251')
-             img = os.path.join(root, file)
-	     img = '"%s"' % img
-	     #print img
-	     fileList.append(img)
-	     os.chdir(root)
-	     if not os.path.exists('./stamp'): os.makedirs('./stamp')
-	     print 'Processing file %d out of %d' % (number, total)
-	#get width
-             wid = subprocess.Popen(['identify', '-format', '%w', '%s' % file.encode('windows-1251')], shell=True, stdout=subprocess.PIPE)
-	     wid = str(wid.communicate())
-	     wid = int(re.sub("\D", "", wid)) #\D removes any non-digit character
-	#get height
-	     hei = subprocess.Popen(['identify', '-format', '%h', '%s' % file.encode('windows-1251')], shell=True, stdout=subprocess.PIPE)
-	     hei = str(hei.communicate())
-	     hei = int(re.sub("\D", "", hei)) #\D removes any non-digit character
+            img = os.path.join(root, file)
+            img = "%s" % img
+            #print(img)
+            fileList.append(img)
+            os.chdir(root)
+            if not os.path.exists('.\stamp'): os.makedirs('.\stamp')
+            print(f'Processing file {number} out of {total}')
+        # get width
+            wid = subprocess.Popen(['magick', 'identify', '-format', '%w', '%s' % img], shell=True, stdout=subprocess.PIPE)
+            wid = str(wid.communicate())
+            wid = int(re.sub("\D", "", wid))  # \D removes any non-digit character
+        # get height
+            hei = subprocess.Popen(['magick', 'identify', '-format', '%h', '%s' % img], shell=True, stdout=subprocess.PIPE)
+            hei = str(hei.communicate())
+            hei = int(re.sub("\D", "", hei))  # \D removes any non-digit character
 
-	     if wid > hei:
-		dim = wid
-	     else:
-		dim = hei
-	     dim2 = roundup(dim)
-	     newfile = "./stamp/%03d.jpg" % number
-	     os.system('convert '"%s"' -background white -gravity center -extent "%sx%s" "%s"' % (img.encode('windows-1251'), dim2, dim2, newfile))# square
-             if dim2>900: os.system('convert %s -resize 900 %s' % (newfile, newfile))#resize files over 900 pixels
-	     #print 'done'
-	#stamping
-	     if os.path.exists(stamp):
-	     	tempstamp = stamp_small(dim2) # call resizer
-	     	os.system('composite -gravity %s  %s  %s  %s' % (gravity, tempstamp, newfile, newfile))
-		os.remove(tempstamp)
-	     number = number + 1
-print "Done!"
+            if wid > hei:
+                dim = wid
+            else:
+                dim = hei
+            dim2 = roundup(dim)
+
+            newfile = ".\stamp\%03d.jpg" % number
+        # square
+            os.system(f'magick convert {img} -background white -gravity center -extent {dim2}x{dim2} {newfile}')
+        # resize files over 900 pixels
+            if dim2 > 900: os.system(f'magick convert {newfile} -resize 900 {newfile}')
+        # stamping
+            if os.path.exists(stamp):
+                tempstamp = stamp_small(dim2)  # call resizer
+                os.system(f'magick composite -gravity {gravity} {tempstamp} {newfile} {newfile}')
+                os.remove(tempstamp)
+            number = number + 1
+print("Done!")
