@@ -1,10 +1,6 @@
 # mass-watermark-stamper
 
-Dependencies: 
-
-* Python
-* wxPython
-* ImageMagick
+Crops images
 
 Resizes large images to 900 px
 
