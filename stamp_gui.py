@@ -1,286 +1,117 @@
-#!/usr/bin/python
-# -*- coding: utf-8 -*- 
-console_encoding = 'windows-1251'
-import os, sys, subprocess
-import contextlib
-import re, math
-from threading import Thread
-try:
-    import wx
-except ImportError:
-    raise ImportError,"The wxPython module is required to run this program."
+import os
+import sys
+from PIL import Image, ImageOps
+from gooey import Gooey, GooeyParser
 
-class RedirectText(object):
-    def __init__(self,aWxTextCtrl):
-        self.out=aWxTextCtrl
- 
-    def write(self, string):
-	wx.CallAfter(self.out.WriteText, string)
 
-class FileDropTarget(wx.FileDropTarget):
-   def __init__(self, obj):
-      wx.FileDropTarget.__init__(self)
-      self.obj = obj
-
-   def OnDropFiles(self, x, y, filenames):
-      self.obj.SetInsertionPointEnd()
-      for file in filenames:
-	global path
-	rootdir = file
-	if os.path.exists(rootdir): 
-	    self.obj.WriteText(file)
-
-##########################
-########## MAIN ##########
-##########################
-
-class RunThread(Thread):
-    def __init__(self):
-        """Init Worker Thread Class."""
-        Thread.__init__(self)
-        self.start()    # start the thread
- 
-    def run(self):
-        """Run Worker Thread."""
-        # This is the code executing in the new thread.
-
-	number = 1
-	fileList = []
-	application_path = os.path.dirname(os.path.realpath(sys.argv[0]))
-
-	# counting images recursively
-	for root, subFolders, files in os.walk(rootdir):
-    	  for file in files:
+def counter(rootdir_):
+    """counting images recursively"""
+    file_list = []
+    for root, subFolders, files in os.walk(rootdir_):
+        for file in files:
             if os.path.splitext(file)[1].lower() in ('.jpg', '.jpeg'):
-		f = os.path.join(root,file)
-		f = '"%s"' % f
-	        fileList.append(f)
-	total = len(fileList)
-
-	# rounding up dimensions
-	def roundup(dim):
-	   no = 0
-	   while no != 1:
-		x = int(round(dim, -1))
-		if x<dim: dim = dim+5
-		else: dim2 = x; no = 1; return dim2
-
-	# resizing stamp
-	def stamp_small(dim2):
-		if dim2>900: dim2 = 900
-		if dim2>=700: scale = 40 # size = % of final dimension (dim2)
-		elif dim2<=400: scale = 65
-		else: scale = 55
-		stampsize = float(dim2)/float(100)*scale
-		stampsize = int(math.ceil(stampsize))
-		tempstamp = "%s\\tempstamp.png" % application_path
-		os.system('convert %s -resize %d %s' % (stamp, stampsize, tempstamp))
-		return tempstamp
-
-################
-### resizing ###
-################
-	for root, subdirs, files in os.walk(rootdir): # recursion
-    	  for file in files:
-            if os.path.splitext(file)[1].lower() in ('.jpg', '.jpeg'):
-	     #file = file.decode('windows-1251')
-	     #root = root.decode('windows-1251')
-             img = os.path.join(root, file)
-	     img = '"%s"' % img
-	     os.chdir(root)
-	     if not os.path.exists('./stamp'): os.makedirs('./stamp')
-	     print "Processing file %d out of %d" % (number, total)
-	#get width
-	     wid = subprocess.Popen(['identify', '-format', '%w', '%s' % file.encode('windows-1251')], shell=False, stdout=subprocess.PIPE)
-	     wid = str(wid.communicate())
-	     wid = int(re.sub("\D", "", wid)) #\D removes any non-digit character
-	#get height
-	     hei = subprocess.Popen(['identify', '-format', '%h', '%s' % file.encode('windows-1251')], shell=False, stdout=subprocess.PIPE)
-	     hei = str(hei.communicate())
-	     hei = int(re.sub("\D", "", hei)) #\D removes any non-digit character
-
-	     if wid > hei:
-		dim = wid
-	     else:
-		dim = hei
-	     dim2 = roundup(dim)
-	     newfile = "./stamp/%03d.jpg" % number
-	#square
-             os.system('convert '"%s"' -background white -gravity center -extent "%sx%s" "%s"' % (img.encode('windows-1251'), dim2, dim2, newfile))# square
-	     if dim2>900: os.system('convert %s -resize 900 %s' % (newfile, newfile))#resize files over 900 pixels
-	#stamping
-	     if os.path.exists(stamp):
-	     	tempstamp = stamp_small(dim2) # call resizer
-	     	os.system('composite -gravity %s  %s  %s  %s' % (gravity, tempstamp, newfile, newfile))
-	     	os.system('convert -quality 75  %s  %s' % (newfile, newfile))
-	     	os.remove(tempstamp)
-	     number = number + 1
-	print "Done!"
-	os.chdir(application_path)
+                img = os.path.join(root, file)
+                file_list.append(img)
+    return file_list
 
 
-########################
-######## GUI ###########
-########################
-class MyForm(wx.Frame):
- 
-    #----------------------------------------------------------------------
-    def __init__(self):
-        wx.Frame.__init__(self, None, wx.ID_ANY, "Mass Watermark Stamper", size=(450, 300))
-         # Add a panel so it looks the correct on all platforms
-        panel = wx.Panel(self, wx.ID_ANY)
+def stamp_small(dim, stamp):
+    """resizing stamp"""
+    if dim > 900:
+        dim = 900
+    scale = (20 * dim) / 10000
+    tempstamp_img = Image.open(stamp)
+    stamp_width, stamp_height = tempstamp_img.size
+    scaled_stamp_w, scaled_stamp_h = int(stamp_width * scale), int(stamp_height * scale)
+    tempstamp_img = tempstamp_img.resize((scaled_stamp_w, scaled_stamp_h))
+    return tempstamp_img, scaled_stamp_w, scaled_stamp_h
 
-    #---------------------------------------------------------------------- 
- 
-        sizer = wx.GridBagSizer(5, 5)
-	text1 = wx.StaticText(panel, label="Mass Image Stamper v1.4")
-        sizer.Add(text1, pos=(0, 0), flag=wx.TOP|wx.LEFT|wx.BOTTOM, 
-            border=15)
 
-        #icon = wx.StaticBitmap(panel, bitmap=wx.Bitmap('exec.png'))
-        #sizer.Add(icon, pos=(0, 4), flag=wx.TOP|wx.RIGHT|wx.ALIGN_RIGHT, border=5)
+def get_gravity(gravity, dim, w, h):
+    if gravity == "n": return (dim - w) // 2, 0
+    elif gravity == "ne": return (dim - w), 0
+    elif gravity == "nw": return 0, 0
+    elif gravity == "s": return (dim - w) // 2, (dim - h)
+    elif gravity == "se": return (dim - w), (dim - h)
+    elif gravity == "sw": return 0, (dim - h)
+    elif gravity == "e": return (dim - w), (dim - h) // 2
+    elif gravity == "w": return 0, (dim - h) // 2
+    elif gravity == "c": return int(dim / 2 - w / 2), int(dim / 2 - h / 2)
 
-        line = wx.StaticLine(panel)
-        sizer.Add(line, pos=(1, 0), span=(1, 5), 
-            flag=wx.EXPAND|wx.BOTTOM, border=10)
 
-        text2 = wx.StaticText(panel, label="Folder:")
-        sizer.Add(text2, pos=(2, 0), flag=wx.LEFT|wx.TOP, border=10)
+if len(sys.argv) >= 2:
+    """If any arguments are passed, run in CLI mode,
+    otherwise run in GUI mode"""
+    if '--ignore-gooey' not in sys.argv:
+        sys.argv.append('--ignore-gooey')
 
-        self.tc2 = wx.TextCtrl(panel, style = wx.TE_PROCESS_ENTER)
-        sizer.Add(self.tc2, pos=(2, 1), span=(1, 3), flag=wx.TOP|wx.EXPAND, border=5)
-	self.tc2.Bind(wx.EVT_TEXT_ENTER, self.OnPressEnter)
-	self.tc2.Bind(wx.EVT_SET_FOCUS, self.OnTextSetFocus)
-        dt1 = FileDropTarget(self.tc2)
-        self.tc2.SetDropTarget(dt1)
-	self.tc2.Bind(wx.EVT_TEXT, self.OnPressEnter)
 
-        button1 = wx.Button(panel, label="Browse...")
-        sizer.Add(button1, pos=(2, 4), flag=wx.TOP|wx.RIGHT, border=5)
-	button1.Bind(wx.EVT_BUTTON, self.BrowseBtn)
+@Gooey(program_name="Mass watermark stamper",
+       progress_regex=r"^Processing file (?P<current>\d+) out of (?P<total>\d+)$",
+       progress_expr="current / total * 100")
+def start():
+    application_path = os.path.dirname(os.path.realpath(sys.argv[0]))
+    stamp = os.path.join(application_path, "stamp.png")
 
-	text3 = wx.StaticText(panel, label="Watermark:")
-        sizer.Add(text3, pos=(3, 0), flag=wx.LEFT|wx.TOP, border=10)
+    parser = GooeyParser()
+    parser.add_argument('-g', '--gravity', action='store', dest='gravity', help='Where to put a stamp', nargs='?',
+                        default='se', choices=['n', 's', 'e', 'w', 'nw', 'sw', 'ne', 'se', 'c'])
+    parser.add_argument('-f', '--folder', action='store', dest='folder', help='Folder to process', nargs=1,
+                        required=True, widget='DirChooser')
+    parser.add_argument('-s', '--stamp', action='store', dest='stamp', help='Path to your stamp', nargs='?',
+                        default=stamp, widget='FileChooser')
+    results = parser.parse_args()
 
-	self.combo = wx.ComboBox(panel, choices=watermarks, value=watermarks[def_stamp])
-	sizer.Add(self.combo, pos=(3, 1), span=(1, 3), flag=wx.TOP|wx.EXPAND, border=5)
-	self.combo.Bind(wx.EVT_COMBOBOX, self.onSelect)
+    stamp = results.stamp
+    path = results.folder
+    rootdir = path[0]
+    number = 1
+    file_fist = counter(rootdir)
+    total = len(file_fist)
 
-	text4 = wx.StaticText(panel, label="Gravity:")
-        sizer.Add(text4, pos=(4, 0), flag=wx.LEFT|wx.TOP, border=10)
+    if os.path.exists(stamp):
+        print("Using stamp:", stamp)
+    else:
+        print("No stamp found")
 
-	self.combo2 = wx.ComboBox(panel, choices=grav_full, value=grav_full[7])
-	sizer.Add(self.combo2, pos=(4, 1), span=(1, 3), flag=wx.TOP|wx.EXPAND, border=5)
-	self.combo2.Bind(wx.EVT_COMBOBOX, self.onSelect2)
+    for file in file_fist:
+        thisfile = os.path.abspath(file)
+        file_dir = os.path.dirname(thisfile)
+        os.chdir(file_dir)
+        if not os.path.exists('./stamp'): os.makedirs('./stamp')
+        print(f'Processing file {number} out of {total}')
+        newfile = "./stamp/%03d.jpg" % number
 
-	log = wx.TextCtrl(panel, wx.ID_ANY, style = wx.TE_MULTILINE|wx.TE_READONLY)
-        sizer.Add(log, pos=(5, 0), span=(1, 5), flag=wx.ALL|wx.EXPAND, border=5)
+        with Image.open(file) as img_:
+            img_.load()
 
-#        sb = wx.StaticBox(panel, label="Optional Attributes")
+        # crop
+        invert_img = ImageOps.invert(img_)
+        image_box = invert_img.getbbox()
+        cropped_img = img_.crop(image_box)
 
-#        boxsizer = wx.StaticBoxSizer(sb, wx.VERTICAL)
-#        boxsizer.Add(wx.CheckBox(panel, label="Public"), 
-#            flag=wx.LEFT|wx.TOP, border=5)
-#        boxsizer.Add(wx.CheckBox(panel, label="Generate Default Constructor"),
-#            flag=wx.LEFT, border=5)
-#        boxsizer.Add(wx.CheckBox(panel, label="Generate Main Method"), 
-#            flag=wx.LEFT|wx.BOTTOM, border=5)
-#        sizer.Add(boxsizer, pos=(5, 0), span=(1, 5), 
-#            flag=wx.EXPAND|wx.TOP|wx.LEFT|wx.RIGHT , border=10)
+        wid, hei = cropped_img.size
+        dim = max(wid, hei)
+        dim = 5 * round(dim / 5)
 
-#        button3 = wx.Button(panel, label='Help')
-#        sizer.Add(button3, pos=(7, 0), flag=wx.LEFT, border=10)
+        # square
+        square_img = Image.new('RGB', (dim, dim), (255, 255, 255, 0))
+        square_img.paste(cropped_img, (int((dim - wid) / 2), int((dim - hei) / 2)))
 
-        self.button4 = wx.Button(panel, label="Go!")
-        sizer.Add(self.button4, pos=(6, 3))
-	self.button4.Bind(wx.EVT_BUTTON, self.GoBtn)
-	self.button4.Disable()
+        # resize files over 900 pixels
+        if dim > 900:
+            dim = 900
+            square_img = square_img.resize((dim, dim))
 
-        button5 = wx.Button(panel, label="Quit")
-        sizer.Add(button5, pos=(6, 4), flag=wx.BOTTOM|wx.RIGHT, border=5)
-	button5.Bind(wx.EVT_BUTTON, self.QuitBtn)
+        # stamping
+        if os.path.exists(stamp):
+            tempstamp, scaled_stamp_w, scaled_stamp_h = stamp_small(dim, stamp)  # call resizer
+            square_img.paste(tempstamp, get_gravity(results.gravity, dim, scaled_stamp_w, scaled_stamp_h), tempstamp)
+        square_img.save(newfile)
+        number += 1
 
-        sizer.AddGrowableCol(2)
-        
-        panel.SetSizer(sizer)
+    print("Done!")
 
-        redir=RedirectText(log)
-        sys.stdout=redir
- 
-    #----------------------------------------------------------------------
-    def setupWatcher(self):
-        watcher = FileSystemWatcher()
-        watcher.Path = application_path
-        
-        watcher.Changed += self.onChanged
-        watcher.Created += self.onChanged
-        watcher.Deleted += self.onChanged
-        watcher.Renamed += self.onRenamed
-        
-        watcher.EnableRaisingEvents = True
 
-    def BrowseBtn(self, event):
-	dlg = wx.DirDialog(self, "Choose a directory:", style=wx.DD_DEFAULT_STYLE)
-        if dlg.ShowModal() == wx.ID_OK:
-	    self.tc2.Remove(0,99999999)
-	    global rootdir
-	    rootdir = dlg.GetPath()
-	    rootdir = rootdir.decode('windows-1251')
-        dlg.Destroy()
-	if os.path.exists(rootdir): 
-	    self.button4.Enable()
-	    self.tc2.write(rootdir)
-	    print "Ready. Press \"Go!\" to start."
-	else: self.button4.Disable(); print "Error! No such folder."
- 
-    def GoBtn(self, event):# Runs the thread
-        RunThread()
-        self.button4.Disable()
-
-    def OnPressEnter(self,event):
-	global rootdir
-	rootdir = self.tc2.GetValue()
-	if os.path.exists(rootdir): 
-	    self.button4.Enable()
-	    print "Ready. Press \"Go!\" to start."
-	else: self.button4.Disable(); print "Error! No such folder."
-
-    def OnTextSetFocus(self,event): 
-        wx.CallAfter(self.SelectAll) 
-    def SelectAll(self): 
-        self.tc2.SetSelection(-1, -1)
-
-    def QuitBtn(self, event):
-	self.Close()
-
-    def onSelect(self, event):
-	stamp_name = self.combo.GetStringSelection()
-	global stamp
-	stamp = os.path.join(application_path, stamp_name)
-	print stamp
-
-    def onSelect2(self, event):
-	global gravity
-	gravity = self.combo2.GetStringSelection()
-
-watermarks = []
-global stamp
-stamp_name_default = "stamp.png"
-application_path = os.path.dirname(os.path.realpath(sys.argv[0]))
-stamp = os.path.join(application_path, stamp_name_default)
-
-os.chdir(application_path)
-for files in os.listdir("."):
-    if files.endswith(".png"):
-       watermarks.append(files)
-def_stamp = int(watermarks.index('stamp.png'))
-
-grav_full = ['North', 'South', 'East', 'West', 'NorthWest', 'SouthWest', 'NorthEast', 'SouthEast', 'Center']
-global gravity; gravity = "SouthEast"
-
-#----------------------------------------------------------------------
-# Run the program
-if __name__ == "__main__":
-    app = wx.App(False)
-    frame = MyForm().Show()
-    app.MainLoop()
+if __name__ == '__main__':
+    start()
