@@ -2,7 +2,7 @@
 
 Crops images
 
-Resizes large images to 900 px
+Resizes large images
 
 Makes images square by adding white spaces
 

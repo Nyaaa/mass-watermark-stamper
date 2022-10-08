@@ -17,8 +17,6 @@ def counter(rootdir_):
 
 def stamp_small(dim, stamp):
     """resizing stamp"""
-    if dim > 900:
-        dim = 900
     scale = (20 * dim) / 10000
     tempstamp_img = Image.open(stamp)
     stamp_width, stamp_height = tempstamp_img.size
@@ -56,6 +54,8 @@ def start():
     parser = GooeyParser()
     parser.add_argument('-g', '--gravity', action='store', dest='gravity', help='Where to put a stamp', nargs='?',
                         default='se', choices=['n', 's', 'e', 'w', 'nw', 'sw', 'ne', 'se', 'c'])
+    parser.add_argument('-l', '--limit', action='store', dest='limit', help='Max image size, px', nargs='?',
+                        default=900, type=int)
     parser.add_argument('-f', '--folder', action='store', dest='folder', help='Folder to process', nargs=1,
                         required=True, widget='DirChooser')
     parser.add_argument('-s', '--stamp', action='store', dest='stamp', help='Path to your stamp', nargs='?',
@@ -64,6 +64,7 @@ def start():
 
     stamp = results.stamp
     path = results.folder
+    limit = results.limit
     rootdir = path[0]
     number = 1
     file_fist = counter(rootdir)
@@ -99,8 +100,8 @@ def start():
         square_img.paste(cropped_img, (int((dim - wid) / 2), int((dim - hei) / 2)))
 
         # resize files over 900 pixels
-        if dim > 900:
-            dim = 900
+        if dim > limit:
+            dim = limit
             square_img = square_img.resize((dim, dim))
 
         # stamping
