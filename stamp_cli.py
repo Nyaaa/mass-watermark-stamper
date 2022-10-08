@@ -37,6 +37,7 @@ def get_gravity(dim, w, h):
     elif gravity == "sw": return 0, (dim - h)
     elif gravity == "e": return (dim - w), (dim - h) // 2
     elif gravity == "w": return 0, (dim - h) // 2
+    elif gravity == "c": return int(dim / 2 - w / 2), int(dim / 2 - h / 2)
 
 
 def start():
