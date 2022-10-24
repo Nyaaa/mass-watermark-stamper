@@ -2,12 +2,14 @@ import os
 import sys
 from PIL import Image, ImageOps
 from gooey import Gooey, GooeyParser
+import ctypes
+import platform
 
 
-def counter(rootdir_):
+def counter(path):
     """counting images recursively"""
     file_list = []
-    for root, subFolders, files in os.walk(rootdir_):
+    for root, subFolders, files in os.walk(path):
         for file in files:
             if os.path.splitext(file)[1].lower() in ('.jpg', '.jpeg'):
                 img = os.path.join(root, file)
@@ -18,11 +20,11 @@ def counter(rootdir_):
 def stamp_small(dim, stamp):
     """resizing stamp"""
     scale = (20 * dim) / 10000
-    tempstamp_img = Image.open(stamp)
-    stamp_width, stamp_height = tempstamp_img.size
+    temp_stamp_img = Image.open(stamp)
+    stamp_width, stamp_height = temp_stamp_img.size
     scaled_stamp_w, scaled_stamp_h = int(stamp_width * scale), int(stamp_height * scale)
-    tempstamp_img = tempstamp_img.resize((scaled_stamp_w, scaled_stamp_h))
-    return tempstamp_img, scaled_stamp_w, scaled_stamp_h
+    temp_stamp_img = temp_stamp_img.resize((scaled_stamp_w, scaled_stamp_h))
+    return temp_stamp_img, scaled_stamp_w, scaled_stamp_h
 
 
 def get_gravity(gravity, dim, w, h):
@@ -65,9 +67,9 @@ def start():
     stamp = results.stamp
     path = results.folder
     limit = results.limit
-    rootdir = path[0]
+    root_dir = path[0]
     number = 1
-    file_fist = counter(rootdir)
+    file_fist = counter(root_dir)
     total = len(file_fist)
 
     if os.path.exists(stamp):
@@ -76,8 +78,8 @@ def start():
         print("No stamp found")
 
     for file in file_fist:
-        thisfile = os.path.abspath(file)
-        file_dir = os.path.dirname(thisfile)
+        this_file = os.path.abspath(file)
+        file_dir = os.path.dirname(this_file)
         os.chdir(file_dir)
         if not os.path.exists('./stamp'): os.makedirs('./stamp')
         print(f'Processing file {number} out of {total}')
@@ -106,8 +108,8 @@ def start():
 
         # stamping
         if os.path.exists(stamp):
-            tempstamp, scaled_stamp_w, scaled_stamp_h = stamp_small(dim, stamp)  # call resizer
-            square_img.paste(tempstamp, get_gravity(results.gravity, dim, scaled_stamp_w, scaled_stamp_h), tempstamp)
+            temp_stamp, scaled_stamp_w, scaled_stamp_h = stamp_small(dim, stamp)  # call resizer
+            square_img.paste(temp_stamp, get_gravity(results.gravity, dim, scaled_stamp_w, scaled_stamp_h), temp_stamp)
         square_img.save(newfile)
         number += 1
 
@@ -115,4 +117,7 @@ def start():
 
 
 if __name__ == '__main__':
+    if platform.system() == "Windows":
+        if int(platform.release()) >= 8:
+            ctypes.windll.shcore.SetProcessDpiAwareness(True)
     start()
