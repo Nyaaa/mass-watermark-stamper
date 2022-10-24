@@ -19,12 +19,13 @@ def counter(path):
 
 def stamp_small(dim, stamp):
     """resizing stamp"""
-    scale = (20 * dim) / 10000
+    v_size = int(dim * 0.2)
     temp_stamp_img = Image.open(stamp)
-    stamp_width, stamp_height = temp_stamp_img.size
-    scaled_stamp_w, scaled_stamp_h = int(stamp_width * scale), int(stamp_height * scale)
-    temp_stamp_img = temp_stamp_img.resize((scaled_stamp_w, scaled_stamp_h))
-    return temp_stamp_img, scaled_stamp_w, scaled_stamp_h
+
+    scale = (v_size / float(temp_stamp_img.size[1]))
+    h_size = int((float(temp_stamp_img.size[0]) * float(scale)))
+    temp_stamp_img = temp_stamp_img.resize((h_size, v_size))
+    return temp_stamp_img, h_size, v_size
 
 
 def get_gravity(gravity, dim, w, h):
@@ -65,9 +66,8 @@ def start():
     results = parser.parse_args()
 
     stamp = results.stamp
-    path = results.folder
     limit = results.limit
-    root_dir = path[0]
+    root_dir = results.folder[0]
     number = 1
     file_fist = counter(root_dir)
     total = len(file_fist)
@@ -78,20 +78,19 @@ def start():
         print("No stamp found")
 
     for file in file_fist:
-        this_file = os.path.abspath(file)
-        file_dir = os.path.dirname(this_file)
-        os.chdir(file_dir)
-        if not os.path.exists('./stamp'): os.makedirs('./stamp')
+        file_dir = os.path.dirname(file)
+        output_dir = os.path.join(file_dir, "stamp")
+        if not os.path.exists(output_dir): os.makedirs(output_dir)
         print(f'Processing file {number} out of {total}')
-        newfile = "./stamp/%03d.jpg" % number
+        newfile = os.path.join(output_dir, "%03d.jpg" % number)
 
-        with Image.open(file) as img_:
-            img_.load()
+        with Image.open(file) as source_img:
+            source_img.load()
 
         # crop
-        invert_img = ImageOps.invert(img_)
+        invert_img = ImageOps.invert(source_img)
         image_box = invert_img.getbbox()
-        cropped_img = img_.crop(image_box)
+        cropped_img = source_img.crop(image_box)
 
         wid, hei = cropped_img.size
         dim = max(wid, hei)
