@@ -41,8 +41,7 @@ def get_gravity(gravity, dim, w, h):
 
 
 if len(sys.argv) >= 2:
-    """If any arguments are passed, run in CLI mode,
-    otherwise run in GUI mode"""
+    """If any arguments are passed, run in CLI mode, otherwise run in GUI mode"""
     if '--ignore-gooey' not in sys.argv:
         sys.argv.append('--ignore-gooey')
 
@@ -50,24 +49,35 @@ if len(sys.argv) >= 2:
 @Gooey(program_name="Mass watermark stamper",
        progress_regex=r"^Processing file (?P<current>\d+) out of (?P<total>\d+)$",
        progress_expr="current / total * 100")
-def start():
+def argparse():
     application_path = os.path.dirname(os.path.realpath(sys.argv[0]))
     stamp = os.path.join(application_path, "stamp.png")
 
-    parser = GooeyParser()
-    parser.add_argument('-g', '--gravity', action='store', dest='gravity', help='Where to put a stamp', nargs='?',
+    parser = GooeyParser(description=start.__doc__)
+    parser.add_argument('-g', '--gravity', action='store', dest='Gravity', help='Where to put a stamp', nargs='?',
                         default='se', choices=['n', 's', 'e', 'w', 'nw', 'sw', 'ne', 'se', 'c'])
-    parser.add_argument('-l', '--limit', action='store', dest='limit', help='Max image size, px', nargs='?',
+    parser.add_argument('-l', '--limit', action='store', dest='Limit', help='Max image size, px', nargs='?',
                         default=900, type=int)
-    parser.add_argument('-f', '--folder', action='store', dest='folder', help='Folder to process', nargs=1,
+    parser.add_argument('-f', '--folder', action='store', dest='Folder', help='Folder to process', nargs=1,
                         required=True, widget='DirChooser')
-    parser.add_argument('-s', '--stamp', action='store', dest='stamp', help='Path to your stamp', nargs='?',
-                        default=stamp, widget='FileChooser')
+    parser.add_argument('-s', '--stamp', action='store', dest='Stamp', help='Path to your stamp', nargs='?',
+                        default=stamp, widget='FileChooser', gooey_options={
+                                'wildcard':
+                                    "PNG (*.png)|*.png|"
+                                    "All files (*.*)|*.*",
+                                'default_dir': application_path,
+                                'default_file': "stamp.png",
+                            })
     results = parser.parse_args()
+    return results.Stamp, results.Limit, results.Folder[0], results.Gravity
 
-    stamp = results.stamp
-    limit = results.limit
-    root_dir = results.folder[0]
+
+def start():
+    """
+    A tool for automatically cropping all images in a given folder,
+    resizing, reshaping them to a square and applying a watermark.
+    """
+    stamp, limit, root_dir, gravity = argparse()
     number = 1
     file_fist = counter(root_dir)
     total = len(file_fist)
@@ -108,7 +118,7 @@ def start():
         # stamping
         if os.path.exists(stamp):
             temp_stamp, scaled_stamp_w, scaled_stamp_h = stamp_small(dim, stamp)  # call resizer
-            square_img.paste(temp_stamp, get_gravity(results.gravity, dim, scaled_stamp_w, scaled_stamp_h), temp_stamp)
+            square_img.paste(temp_stamp, get_gravity(gravity, dim, scaled_stamp_w, scaled_stamp_h), temp_stamp)
         square_img.save(newfile)
         number += 1
 
