@@ -10,8 +10,9 @@ def counter(path):
     """counting images recursively"""
     file_list = []
     for root, subFolders, files in os.walk(path):
+        subFolders[:] = [d for d in subFolders if d != "stamp"]
         for file in files:
-            if os.path.splitext(file)[1].lower() in ('.jpg', '.jpeg'):
+            if os.path.splitext(file)[1].lower() in ('.jpg', '.jpeg', '.png'):
                 img = os.path.join(root, file)
                 file_list.append(img)
     return file_list
@@ -48,7 +49,9 @@ if len(sys.argv) >= 2:
 
 @Gooey(program_name="Mass watermark stamper",
        progress_regex=r"^Processing file (?P<current>\d+) out of (?P<total>\d+)$",
-       progress_expr="current / total * 100")
+       progress_expr="current / total * 100",
+       default_size=(700, 500),
+       header_height=100)
 def argparse():
     application_path = os.path.dirname(os.path.realpath(sys.argv[0]))
     stamp = os.path.join(application_path, "stamp.png")
