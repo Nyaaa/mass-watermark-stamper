@@ -30,15 +30,17 @@ def stamp_small(dim, stamp):
 
 
 def get_gravity(gravity, dim, w, h):
-    if gravity == "n": return (dim - w) // 2, 0
-    elif gravity == "ne": return (dim - w), 0
-    elif gravity == "nw": return 0, 0
-    elif gravity == "s": return (dim - w) // 2, (dim - h)
-    elif gravity == "se": return (dim - w), (dim - h)
-    elif gravity == "sw": return 0, (dim - h)
-    elif gravity == "e": return (dim - w), (dim - h) // 2
-    elif gravity == "w": return 0, (dim - h) // 2
-    elif gravity == "c": return int(dim / 2 - w / 2), int(dim / 2 - h / 2)
+    grav = {'n': ((dim - w) // 2, 0),
+            'ne': ((dim - w), 0,),
+            'nw': (0, 0),
+            's': ((dim - w) // 2, (dim - h)),
+            'se': ((dim - w), (dim - h)),
+            'sw': (0, (dim - h)),
+            'e': ((dim - w), (dim - h) // 2),
+            'w': (0, (dim - h) // 2),
+            'c': (int(dim / 2 - w / 2), int(dim / 2 - h / 2))
+            }
+    return grav[gravity]
 
 
 if len(sys.argv) >= 2:
