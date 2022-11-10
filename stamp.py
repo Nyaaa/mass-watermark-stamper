@@ -38,7 +38,7 @@ def get_gravity(gravity, dim, w, h):
             'sw': (0, (dim - h)),
             'e': ((dim - w), (dim - h) // 2),
             'w': (0, (dim - h) // 2),
-            'c': (int(dim / 2 - w / 2), int(dim / 2 - h / 2))
+            'c': ((dim // 2 - w // 2), (dim // 2 - h // 2))
             }
     return grav[gravity]
 
@@ -99,8 +99,13 @@ def start():
         print(f'Processing file {number} out of {total}')
         newfile = os.path.join(output_dir, "%03d.jpg" % number)
 
-        with Image.open(file) as source_img:
+        with Image.open(file).convert('RGBA') as source_img:
             source_img.load()
+
+        # removing transparency
+        new_image = Image.new("RGBA", source_img.size, "WHITE")
+        new_image.paste(source_img, (0, 0), source_img)
+        source_img = new_image.convert('RGB')
 
         # crop
         invert_img = ImageOps.invert(source_img)
