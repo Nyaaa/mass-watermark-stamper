@@ -117,8 +117,8 @@ def start():
         dim = 5 * round(dim / 5)
 
         # square
-        square_img = Image.new('RGB', (dim, dim), (255, 255, 255, 0))
-        square_img.paste(cropped_img, (int((dim - wid) / 2), int((dim - hei) / 2)))
+        square_img = Image.new('RGB', (dim, dim), "WHITE")
+        square_img.paste(cropped_img, ((dim - wid) // 2, (dim - hei) // 2))
 
         # resize files over 900 pixels
         if dim > limit:
