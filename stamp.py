@@ -9,8 +9,8 @@ import platform
 def counter(path):
     """counting images recursively"""
     file_list = []
-    for root, subFolders, files in os.walk(path):
-        subFolders[:] = [d for d in subFolders if d != "stamp"]
+    for root, subfolders, files in os.walk(path):
+        subfolders[:] = [d for d in subfolders if d != "stamp"]
         for file in files:
             if os.path.splitext(file)[1].lower() in ('.jpg', '.jpeg', '.png'):
                 img = os.path.join(root, file)
@@ -136,7 +136,6 @@ def start():
 
 
 if __name__ == '__main__':
-    if platform.system() == "Windows":
-        if int(platform.release()) >= 8:
-            ctypes.windll.shcore.SetProcessDpiAwareness(True)
+    if platform.system() == "Windows" and int(platform.release()) >= 8:
+        ctypes.windll.shcore.SetProcessDpiAwareness(True)
     start()
